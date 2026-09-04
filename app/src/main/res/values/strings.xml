@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Freunde</string>
+
+    <string name="notification_channel_birthdays">Geburtstage</string>
+    <string name="notification_channel_birthdays_desc">Erinnerungen an Geburtstage deiner Freunde</string>
+    <string name="notification_channel_long_time">Lange nicht gesehen</string>
+    <string name="notification_channel_long_time_desc">Hinweise, wenn du jemanden lange nicht gesehen hast</string>
+</resources>
