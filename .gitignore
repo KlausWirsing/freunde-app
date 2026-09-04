@@ -1,15 +1,2 @@
-*.iml
-.gradle
-/local.properties
-/.idea/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-
-# Keep the real Firebase config out of version control.
-# The placeholder in app/google-services.json is safe to commit;
-# replace it locally with your real file and it will be ignored if you uncomment the line below.
-# app/google-services.json
+Thumbs.db

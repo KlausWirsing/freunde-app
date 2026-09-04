@@ -1,75 +1,80 @@
 # Freunde
 
-Native Android-App (Kotlin, Jetpack Compose, Material 3) zum Verwalten von Infos über Freunde/Bekannte
-vor einem Treffen. MVVM + Repository-Pattern, Firebase (Firestore + Auth) als Backend, WorkManager für
-lokale Erinnerungen.
+Web-App (PWA) zum Verwalten von Infos über Freunde/Bekannte, damit du vor einem Treffen schnell
+nachschauen kannst, was zuletzt besprochen wurde. Läuft im Browser bzw. als "installierte" App auf
+dem Handy - kein Android Studio, kein Kompilieren nötig. Backend ist Firebase (Firestore + Google-Anmeldung).
 
-## Projektstruktur
+Aufgebaut nach dem gleichen Prinzip wie die [Liegestütze-Tracker-App](../liegestuetze-tracker).
+
+## Dateien
 
 ```
-app/src/main/java/com/mhoehn/freunde/
-├── data/
-│   ├── model/          Person, Meeting, FixedInfo, TempInfo, Child
-│   └── repository/     AuthRepository, PersonRepository, MeetingRepository, SettingsRepository
-├── di/                  AppContainer (manuelles DI, kein Hilt)
-├── notification/        NotificationHelper, BirthdayCheckWorker, LongTimeNoSeeWorker, ReminderScheduler
-├── ui/
-│   ├── navigation/       FreundeNavGraph
-│   ├── screens/          list, detail, personform, meetingform, login, settings
-│   ├── components/       PersonAvatar
-│   └── theme/            Color, Theme, Type
-├── util/                 DateUtils
-├── FreundeApplication.kt
-└── MainActivity.kt
+index.html          Seitenstruktur (alle "Screens" liegen im DOM, werden per JS ein-/ausgeblendet)
+style.css            Design (hell/dunkel automatisch je nach Systemeinstellung)
+app.js                UI-Logik, Hash-Routing (#/, #/person/xyz, ...), Formulare, Erinnerungen
+cloud.js              Firebase-Anbindung (Auth + Firestore), als window.FreundeCloud
+firebase-config.js    Platzhalter-Zugangsdaten - siehe Setup unten
+manifest.json          PWA-Manifest ("Zum Homescreen hinzufügen")
+service-worker.js      Offline-Caching der statischen Dateien
+firestore.rules        Sicherheitsregeln: jede/r Nutzer/in sieht nur eigene Daten
+generate-icons.ps1     Erzeugt die App-Icons (icons/*.png)
+serve.ps1              Lokaler Test-Server (siehe unten)
 ```
 
-Firestore-Datenmodell: `users/{uid}/persons/{personId}` mit Subcollection `meetings/{meetingId}`.
-Jede/r Nutzer/in sieht nur die eigenen Daten (siehe `firestore.rules`).
+Firestore-Datenmodell: `users/{uid}/persons/{personId}` mit Subcollection `meetings/{meetingId}`,
+genau wie ursprünglich für die native Version geplant.
 
-## Firebase-Setup (nötig, bevor die App läuft)
+## Firebase-Setup (einmalig nötig)
 
-Das Projekt enthält unter `app/google-services.json` nur eine **Platzhalter-Datei** – Anmeldung und
-Sync funktionieren erst nach folgenden Schritten:
+Ohne echte Firebase-Zugangsdaten zeigt die App nur den Login-Screen, Anmeldung/Sync funktionieren
+nicht. So richtest du es ein:
 
 1. **Firebase-Projekt anlegen**: [console.firebase.google.com](https://console.firebase.google.com) →
-   "Projekt hinzufügen".
-2. **Android-App registrieren**: Paketname exakt `com.mhoehn.freunde` eingeben (steht auch in
-   `app/build.gradle.kts` als `applicationId`).
-3. **SHA-1-Fingerprint hinzufügen** (Pflicht für Google Sign-In): In den Projekteinstellungen der
-   Android-App "Fingerprint hinzufügen". Debug-Fingerprint ermitteln mit:
-   ```bash
-   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
-   ```
-   (unter Windows liegt der Debug-Keystore i.d.R. unter `%USERPROFILE%\.android\debug.keystore`).
-4. **`google-services.json` herunterladen** und die Platzhalter-Datei unter `app/google-services.json`
-   ersetzen.
-5. **Firestore aktivieren**: Firebase Console → Build → Firestore Database → Datenbank erstellen
-   (Produktionsmodus reicht, die Regeln werden im nächsten Schritt gesetzt).
-6. **Security Rules deployen**: Inhalt von `firestore.rules` (im Projekt-Root) in der Firebase Console
-   unter Firestore → Regeln einfügen und veröffentlichen (oder per Firebase CLI: `firebase deploy --only firestore:rules`).
-7. **Google als Sign-In-Anbieter aktivieren**: Firebase Console → Build → Authentication →
-   Sign-in method → Google → aktivieren, Support-E-Mail setzen.
+   "Projekt hinzufügen" (z.B. "freunde-app").
+2. **Web-App registrieren**: Im Projekt auf das `</>`-Symbol ("Web-App hinzufügen") klicken,
+   einen Namen vergeben (Firebase Hosting kannst du dabei abwählen, wir nutzen GitHub Pages).
+3. **Zugangsdaten kopieren**: Firebase zeigt dir ein Objekt mit `apiKey`, `authDomain`,
+   `projectId` usw. Diese Werte in `firebase-config.js` eintragen (die Platzhalter ersetzen).
+   Diese Werte sind **kein Geheimnis** - sie stehen bei jeder Firebase-Web-App offen im Code,
+   die eigentliche Absicherung passiert über die Firestore Security Rules.
+4. **Firestore aktivieren**: Firebase Console → Build → Firestore Database → Datenbank erstellen.
+5. **Security Rules setzen**: Unter Firestore → Regeln den Inhalt von `firestore.rules` einfügen
+   und veröffentlichen.
+6. **Google-Anmeldung aktivieren**: Firebase Console → Build → Authentication → Sign-in method →
+   Google → aktivieren, Support-E-Mail setzen.
+7. **Domain freischalten**: Firebase Console → Authentication → Settings → Authorized domains →
+   `<dein-github-username>.github.io` hinzufügen (sonst blockiert Google die Anmeldung auf der
+   GitHub-Pages-URL).
 
-Nach diesen Schritten enthält die echte `google-services.json` automatisch die Web-Client-ID
-(`client_type: 3`), aus der das `google-services`-Gradle-Plugin die Ressource
-`R.string.default_web_client_id` generiert – die App nutzt sie direkt für den Google-Sign-In-Flow
-über Credential Manager, ohne dass im Code etwas angepasst werden muss.
+## Auf GitHub veröffentlichen (GitHub Pages)
 
-## Projekt öffnen
+Sobald der Ordner `Freunde/` im Wurzelverzeichnis des Repos liegt (so wie hier):
 
-1. Ordner `Freunde/` in Android Studio öffnen ("Open").
-2. Da der Gradle-Wrapper-JAR nicht mitgeliefert ist (Binärdatei), bietet Android Studio beim ersten
-   Öffnen an, den Wrapper zu reparieren/herunterzuladen – das bestätigen. Alternativ, falls lokal
-   Gradle installiert ist: `gradle wrapper --gradle-version 8.9` im Projektordner ausführen.
-3. Sync abwarten, dann `google-services.json` ersetzen (siehe oben) und erneut syncen.
-4. App auf Gerät/Emulator starten.
+1. Im Repo auf GitHub: Settings → Pages.
+2. Unter "Build and deployment" → Source: "Deploy from a branch".
+3. Branch: `main`, Ordner: `/ (root)` → Save.
+4. Nach ein bis zwei Minuten ist die App live unter `https://<dein-github-username>.github.io/<repo-name>/`.
+
+Jeder weitere `git push` auf `main` aktualisiert die Seite automatisch - kein Build-Schritt,
+kein Terminal auf deiner Seite nötig.
+
+## Lokal testen (optional)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File serve.ps1
+```
+
+Startet einen einfachen lokalen Server auf `http://localhost:8081`. Google-Anmeldung funktioniert
+lokal nur, wenn `localhost` ebenfalls unter "Authorized domains" in Firebase Authentication steht
+(das ist dort standardmäßig schon der Fall).
 
 ## Bekannte Einschränkungen
 
-- **Fotos** werden nur als lokale URI (Android Photo Picker) gespeichert, nicht über die Geräte
-  synchronisiert. Für echten Foto-Sync müsste zusätzlich Firebase Storage angebunden werden.
-- **Benachrichtigungen** (Geburtstage, "lange nicht gesehen") laufen über tägliche WorkManager-Jobs
-  (ca. 9:00 / 10:00 Uhr) und benötigen auf Android 13+ die Notification-Runtime-Permission, die beim
-  ersten App-Start abgefragt wird.
-- Der Schwellwert für "lange nicht gesehen" ist über den Einstellungen-Screen konfigurierbar
-  (Default: 60 Tage) und wird lokal per DataStore gespeichert (nicht geräteübergreifend synchronisiert).
+- **Fotos** werden als kleines, komprimiertes Bild direkt im Firestore-Dokument gespeichert
+  (kein separates Firebase Storage nötig) - dadurch bewusst niedrig aufgelöst.
+- **Erinnerungen** (Geburtstage, "lange nicht gesehen") erscheinen als Banner in der App und
+  optional als Browser-Benachrichtigung, aber nur wenn du die App an dem Tag auch öffnest - echte
+  Hintergrund-Benachrichtigungen wie bei einer nativen App bräuchten einen zusätzlichen Server
+  (z.B. Firebase Cloud Functions mit Zeitplan), was hier bewusst nicht eingerichtet ist.
+- Der "Lange nicht gesehen"-Schwellwert (Default: 60 Tage) wird pro Gerät im Browser gespeichert
+  (localStorage), nicht über Firestore synchronisiert.

@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<full-backup-content>
-    <!-- Person data lives in Firestore, not on-device, so there is nothing app-specific to back up here. -->
-</full-backup-content>
